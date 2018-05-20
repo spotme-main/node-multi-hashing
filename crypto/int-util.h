@@ -8,10 +8,30 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/param.h>
+
+/*
+ * Create GNU compatible endian macros. We use the values for __LITTLE_ENDIAN
+ * and __BIG_ENDIAN based on endian.h.
+ */
+#ifdef __sun
+#include <sys/byteorder.h>
+#define LITTLE_ENDIAN   1234
+#define BIG_ENDIAN      4321
+#ifdef _LITTLE_ENDIAN
+#define BYTE_ORDER      LITTLE_ENDIAN
+#else
+#define BYTE_ORDER      BIG_ENDIAN
+#endif /* _LITTLE_ENDIAN */
+#endif /* __sun */
 
 #if defined(_MSC_VER)
 #include <stdlib.h>
+
+//instead of #include <sys/param.h>
+// assume little-endian on Windows
+#define LITTLE_ENDIAN   1234
+#define BIG_ENDIAN      4321
+#define BYTE_ORDER      LITTLE_ENDIAN
 
 static inline uint32_t rol32(uint32_t x, int r) {
   static_assert(sizeof(uint32_t) == sizeof(unsigned int), "this code assumes 32-bit integers");
@@ -23,6 +43,7 @@ static inline uint64_t rol64(uint64_t x, int r) {
 }
 
 #else
+#include <sys/param.h>
 
 static inline uint32_t rol32(uint32_t x, int r) {
   return (x << (r & 31)) | (x >> (-r & 31));
@@ -163,7 +184,11 @@ static inline void memcpy_swap64(void *dst, const void *src, size_t n) {
 }
 
 #if !defined(BYTE_ORDER) || !defined(LITTLE_ENDIAN) || !defined(BIG_ENDIAN)
+#if __STDC_VERSION__ - 0 >= 201112L
 static_assert(false, "BYTE_ORDER is undefined. Perhaps, GNU extensions are not enabled");
+#else
+#error "BYTE_ORDER is undefined. Perhaps, GNU extensions are not enabled"
+#endif
 #endif
 
 #if BYTE_ORDER == LITTLE_ENDIAN
